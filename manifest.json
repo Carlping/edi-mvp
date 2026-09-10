@@ -3,7 +3,7 @@
   "short_name": "EDI",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#F3F0E8",
+  "theme_color": "#14181D",
   "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }
