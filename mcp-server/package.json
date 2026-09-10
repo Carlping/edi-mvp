@@ -1,0 +1,22 @@
+{
+  "name": "edi-mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "MCP server exposing EDI emergency-decision logic as tools (stdio transport)",
+  "bin": {
+    "edi-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@types/node": "^24.0.0"
+  }
+}

@@ -46,3 +46,9 @@ python3 -m http.server 8787   # then open http://localhost:8787/
 - `manifest.json`, `sw.js`, `icon.svg` — PWA（可加到主畫面、離線快取）/ PWA (add-to-home-screen, offline cache)
 
 設計文件（協定、動作分級、介面載體選擇）見 `docs/edi-design.md`。 / Design doc (protocol, action tiers, interface choice): `docs/edi-design.md`.
+
+## MCP server
+
+| 中文 | English |
+|---|---|
+| `mcp-server/` 把同一套決策邏輯（連結、權益提示、價格區間判決、保底行動清單）包成 MCP server，走 stdio，提供 `edi_open_case`、`edi_price_band`、`edi_floor_plan` 三個工具，可掛進 Claude Desktop 等 MCP 客戶端；不存個資，皆為假設性 heuristic。建置與設定見 `mcp-server/README.md`。 | `mcp-server/` wraps the same decision logic (links, rights hints, price-band verdict, floor action list) as an MCP server over stdio, exposing `edi_open_case`, `edi_price_band`, and `edi_floor_plan` for MCP clients like Claude Desktop; no PII stored, all heuristics are assumptions. Build and config: see `mcp-server/README.md`. |
