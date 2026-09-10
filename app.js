@@ -67,7 +67,7 @@ $('#intake-form').addEventListener('submit', (e) => {
 
 /* ---------- render ---------- */
 function render() {
-  if (!S) { $('#intake').classList.remove('hidden'); $('#decision').classList.add('hidden'); return; }
+  if (!S) { $('#intake').classList.remove('hidden'); $('#decision').classList.add('hidden'); $('#route').innerHTML = 'EDI <small>緊急決策卡</small>'; $('#clock').innerHTML = '<small>距期限</small>—'; $('#floor-state').textContent = '未開始'; $('#floor-state').className = 'pill gray'; return; }
   $('#intake').classList.add('hidden'); $('#decision').classList.remove('hidden');
   renderSummary(); renderTracks(); renderQuotes(); renderCompare(); renderRights(); renderEvidence(); tick();
 }
@@ -109,25 +109,26 @@ function bestOptions() {
 function renderSummary() {
   const a = airline(); const L = links(); const b = bestOptions();
   const floorDone = S.done.rebook && S.done.hotel;
+  $('#route').innerHTML = `${S.here} → ${S.home} <small>${a ? a.name : ''} ${S.flight}</small>`;
+  const ck = (k, txt) => `<label class="check ${S.done[k] ? 'done' : ''}"><input type="checkbox" data-done="${k}" ${S.done[k] ? 'checked' : ''}><span>${txt}</span></label>`;
   $('#summary').innerHTML = `
-    <h2>${S.here} → ${S.home} <span class="muted">${a ? a.name : ''} ${S.flight}</span></h2>
-    <div class="muted">每晚 1 小時預估多花約 <b>${fmt(costSlope())}</b>（假設值：深夜/帶小孩加權）｜ 資料源：目前為手動觀測 + 官網深連結（無 API）</div>
-    <h3 style="margin-top:12px">★ 保底（先做，全部可逆）</h3>
-    <div class="check"><input type="checkbox" data-done="rebook" ${S.done.rebook ? 'checked' : ''}> 在原航空 App/官網免費改期到明日最早班</div>
-    <div class="check"><input type="checkbox" data-done="hotel" ${S.done.hotel ? 'checked' : ''}> 訂一間<b>可免費取消</b>的機場旁旅館</div>
-    <div class="check"><input type="checkbox" data-done="voucher" ${S.done.voucher ? 'checked' : ''}> 向地勤索取餐券/旅館券（拿了也可不用）</div>
+    <h3>先做這三件 · 全部可逆</h3>
+    <h2>保底<span class="sub">每晚 1 小時預估多花約 <b>${fmt(costSlope())}</b>（深夜/帶小孩加權的假設值）</span></h2>
+    ${ck('rebook', '在原航空 App/官網免費改期到明日最早班')}
+    ${ck('hotel', '訂一間<b>可免費取消</b>的機場旁旅館')}
+    ${ck('voucher', '向地勤索取餐券/旅館券（拿了也可不用）')}
     <div class="actions">
       <a class="go" target="_blank" rel="noopener" href="${L.airline}">開原航空官網改期</a>
       <a class="go" target="_blank" rel="noopener" href="${L.booking}">Booking 免費取消旅館</a>
     </div>
-    <h3 style="margin-top:14px">◇ 改善（有可能今晚回到家）</h3>
-    ${b ? `<div><b>${b.pick.label}</b> — <span class="big-num">${fmt(b.pick.price)}</span>
-        <div class="muted range">${b.prices.n >= 3 ? `觀測區間 p16–p84：${fmt(b.prices.p16)} – ${fmt(b.prices.p84)}（n=${b.prices.n}）` : `觀測 ${b.prices.n}/3 筆，區間尚不可信`}｜ 到達 ${hm(b.pick.arriveAt)} ✔ 期限內</div>
-        <div class="muted">${b.prices.n < 3 ? '再填 1–2 筆看到的價格，或直接決定（每小時成本累積中）。' : b.pick.price <= b.prices.p50 ? '價格在中位數以下，等待的期望改善小於每小時成本 → 建議現在決定。' : '價格高於中位數；若 15 分鐘內沒有更便宜的，仍建議決定（時間成本累積中）。'}</div>
-        <div class="actions"><a class="go" target="_blank" rel="noopener" href="${L.gflights}">去官網/比價付款（跳轉，不經本站）</a></div>`
-      : `<div class="muted">尚無期限內可到達的觀測價格。先開比價看看今天剩什麼，把看到的價格填進下方「價格觀測」。</div>
+    <h3 class="mt">改善 · 今晚回得了嗎</h3>
+    ${b ? `<div class="option"><div class="lbl">${b.pick.label}</div><div class="price">${fmt(b.pick.price)}</div>
+        <div class="meta">到達 ${hm(b.pick.arriveAt)}，期限內 · ${b.prices.n >= 3 ? `p16–p84 ${fmt(b.prices.p16)} – ${fmt(b.prices.p84)}（n=${b.prices.n}）` : `已觀測 ${b.prices.n}/3 筆，區間尚不可信`}</div></div>
+        <div class="verdict ${b.prices.n < 3 ? 'wait' : ''}">${b.prices.n < 3 ? '再填 1–2 筆看到的價格，或直接決定（每小時成本累積中）。' : b.pick.price <= b.prices.p50 ? '價格在中位數以下，等待的期望改善小於每小時成本 → 建議現在決定。' : '價格高於中位數；若 15 分鐘內沒有更便宜的，仍建議決定（時間成本累積中）。'}</div>
+        <div class="actions"><a class="go" target="_blank" rel="noopener" href="${L.gflights}">去官網付款</a><span class="muted" style="align-self:center">跳轉官網，不經本站</span></div>`
+      : `<p class="muted" style="margin:0">尚無期限內可到達的觀測價格。先開比價看今天剩什麼，把看到的價格填到下方「價格觀測」。</p>
         <div class="actions"><a class="go" target="_blank" rel="noopener" href="${L.gflights}">Google Flights 今天</a><a target="_blank" rel="noopener" href="${L.skyscanner}">Skyscanner</a><a target="_blank" rel="noopener" href="${L.gflightsTmr}">明天首班</a></div>`}
-    <div class="actions" style="margin-top:12px"><button id="share">分享決策卡給家人</button></div>`;
+    <div class="actions" style="margin-top:14px"><button id="share">分享決策卡給家人</button></div>`;
   $('#floor-state').textContent = floorDone ? '保底完成' : S.done.rebook ? '保底進行中' : '保底未完成';
   $('#floor-state').className = 'pill ' + (floorDone ? 'green' : S.done.rebook ? 'yellow' : 'red');
   $('#summary').querySelectorAll('[data-done]').forEach((c) => c.addEventListener('change', () => { S.done[c.dataset.done] = c.checked; log(`${c.checked ? '完成' : '取消'}：${c.parentNode.textContent.trim()}`); render(); }));
@@ -138,7 +139,7 @@ function renderTracks() {
   const L = links(); const a = airline();
   const t = (color, name, body, acts = '') => `<div class="track"><div class="dot ${color}"></div><div class="name">${name}</div><div class="body">${body}<div class="actions">${acts}</div></div></div>`;
   const link = (h, txt, go) => `<a ${go ? 'class="go"' : ''} target="_blank" rel="noopener" href="${h}">${txt}</a>`;
-  $('#tracks').innerHTML = `<h3>平行工作軌</h3>` +
+  $('#tracks').innerHTML = `<h3>平行工作軌 · 一行一狀態</h3>` +
     t(S.done.rebook ? 'g' : 'r', '回程', S.done.rebook ? '明日班已改期；同時看今晚選項' : '先免費改期到明日最早班，再看今晚選項', link(L.airline, '原航空官網', true) + link(L.gflightsTmr, '明天首班') + link(L.gflights, '今天其他航空')) +
     t('y', '客服', `接通時只說三句：① 航班 ${S.flight || '—'} 取消，要求免費改期到最早班或他航 ② 要求提供旅館與餐食（或書面拒絕） ③ 要求<b>書面取消/延誤證明</b>（保險必備）`, link(a ? a.url : L.airline, '航空聯絡頁')) +
     t(S.done.hotel ? 'g' : 'y', '住宿', '航空提供的旅館常遠、要排隊。先自己訂一間可免費取消的，拿到航空券再取消也不虧。', link(L.booking, 'Booking 可免費取消', true) + link(L.gmapsHotel, '地圖看距離')) +
@@ -150,15 +151,15 @@ function renderTracks() {
 
 function renderQuotes() {
   const list = $('#quote-list'); list.innerHTML = '';
-  S.quotes.forEach((q, i) => list.appendChild(el(`<div class="quote"><span>${q.label}｜到 ${hm(q.arriveAt)}</span><span>${fmt(q.price)} <button data-i="${i}">✕</button></span></div>`)));
+  S.quotes.forEach((q, i) => list.appendChild(el(`<div class="quote"><span><b>${q.label}</b> <span class="muted">到 ${hm(q.arriveAt)}</span></span><span>${fmt(q.price)}<button data-i="${i}" aria-label="刪除 ${q.label}">✕</button></span></div>`)));
   list.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { S.quotes.splice(+b.dataset.i, 1); log('刪除觀測價格'); render(); }));
   const est = $('#estimate');
   if (S.quotes.length >= 3) {
     const b = band(S.quotes.map((q) => q.price));
     const spread = (b.p84 - b.p16) / b.p50;
-    est.innerHTML = `<div style="margin-top:10px">價格 ±1σ：<b class="range">${fmt(b.p16)} / ${fmt(b.p50)} / ${fmt(b.p84)}</b> <span class="muted">(p16 / p50 / p84, n=${b.n})</span></div>
-      <div class="muted">${spread < 0.5 ? '區間夠窄（<50%），不需再查，決定吧。' : '區間仍寬，再多 1–2 筆觀測會有幫助；但每小時成本約 ' + fmt(costSlope()) + '。'}</div>`;
-  } else est.innerHTML = `<div class="muted" style="margin-top:8px">已 ${S.quotes.length}/3 筆</div>`;
+    est.innerHTML = `<div class="band"><div><small>p16</small><b>${fmt(b.p16)}</b></div><div><small>p50 中位</small><b>${fmt(b.p50)}</b></div><div><small>p84</small><b>${fmt(b.p84)}</b></div></div>
+      <div class="verdict ${spread < 0.5 ? '' : 'wait'}">${spread < 0.5 ? `區間夠窄（±${Math.round(spread * 50)}%，n=${b.n}），不需再查，決定吧。` : `區間仍寬（n=${b.n}），再多 1–2 筆觀測會有幫助；但每小時成本約 ${fmt(costSlope())}。`}</div>`;
+  } else est.innerHTML = `<div class="note">已 ${S.quotes.length}/3 筆，滿 3 筆才有可信區間。</div>`;
 }
 $('#quote-form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -173,12 +174,12 @@ function renderCompare() {
   const reimb = S.card === 'none' ? 0 : 0.7; // assumed p50 reimbursement when card insurance applies
   const hotelSelf = 3000 * (S.kids ? 1.2 : 1), taxi = 450;
   const net = (x) => fmt(x * (1 - reimb));
-  $('#compare').innerHTML = `<h3>航空提供 vs 自理（保險回補後淨成本）</h3>
-    <div class="muted">自理價格為預設假設，請依你看到的實際價格判斷；回補率 ${Math.round(reimb * 100)}% 為常見 p50 假設。</div>
-    <table><tr><th>項目</th><th>航空提供</th><th>自理</th><th>建議</th></tr>
-    <tr><td>旅館</td><td>免費；常 30–60 分車程、需排隊領券</td><td>${fmt(hotelSelf)} → 淨 ${net(hotelSelf)}；機場旁、可免費取消</td><td class="rec">${S.card === 'none' ? '若旅館券 30 分內拿得到 → 航空' : S.kids ? '自理（小孩早睡值得）' : '自理'}</td></tr>
-    <tr><td>接駁</td><td>接駁車，等候不定</td><td>計程車約 ${fmt(taxi)} → 淨 ${net(taxi)}</td><td class="rec">自理</td></tr>
-    <tr><td>餐食</td><td>餐券（先拿）</td><td>—</td><td class="rec">拿券再自理</td></tr></table>`;
+  $('#compare').innerHTML = `<h3>航空提供 vs 自理 · 保險回補後淨成本</h3>
+    <div class="note">自理價格為預設假設，請依你看到的實際價格判斷；回補率 ${Math.round(reimb * 100)}% 為常見 p50 假設。</div>
+    <table class="cmp"><thead><tr><th>項目</th><th>航空提供</th><th>自理</th><th>建議</th></tr></thead><tbody>
+    <tr><td>旅館</td><td data-l="航空提供">免費；常 30–60 分車程、需排隊領券</td><td data-l="自理">${fmt(hotelSelf)} → 淨 ${net(hotelSelf)}；機場旁、可免費取消</td><td data-l="建議" class="rec">${S.card === 'none' ? '若旅館券 30 分內拿得到 → 航空' : S.kids ? '自理（小孩早睡值得）' : '自理'}</td></tr>
+    <tr><td>接駁</td><td data-l="航空提供">接駁車，等候不定</td><td data-l="自理">計程車約 ${fmt(taxi)} → 淨 ${net(taxi)}</td><td data-l="建議" class="rec">自理</td></tr>
+    <tr><td>餐食</td><td data-l="航空提供">餐券（先拿）</td><td data-l="自理">—</td><td data-l="建議" class="rec">拿券再自理</td></tr></tbody></table>`;
 }
 
 function renderRights() {
@@ -187,7 +188,7 @@ function renderRights() {
   else if (EU.has(S.here)) body = '<b>歐盟/英國出發（EC 261 / UK 261，簡化）</b>：取消時可要求改搭或全額退款；等待期間餐食、住宿、交通由航空負責；非特殊情況另有 €250–600 賠償。';
   else if (US.has(S.here)) body = '<b>美國出發（DOT，簡化）</b>：取消可要求現金全額退款；食宿依各航空 Customer Service Plan（多數主要航空承諾可控因素下提供旅館/餐食）。';
   else body = '<b>其他地區</b>：依航空公司運送條款；多數會提供改期與餐食，住宿視原因。一律要求書面證明。';
-  $('#rights').innerHTML = `<h3>你的權益（提示，非法律意見）</h3><div>${body}</div>`;
+  $('#rights').innerHTML = `<h3>你的權益 · 提示，非法律意見</h3><div style="font-size:15px">${body}</div>`;
 }
 
 const CHECKS = [
@@ -201,11 +202,11 @@ const CHECKS = [
 function checkDone() { return `${CHECKS.filter(([k]) => S.checks[k]).length}/${CHECKS.length}`; }
 function cardNote() {
   const m = { none: '無卡片保險：以航空公司賠償為主；仍保留收據可向航空索賠。', visa_sig: 'Visa 御璽/無限：常見班機延誤/取消保險，門檻多為 4–6 小時，需刷該卡買票；額度與條款以你的卡片權益手冊為準。', mc_world: 'Mastercard 世界/鈦金：常見延誤險，門檻多為 4–6 小時；需收據與航空證明；以權益手冊為準。', amex: 'AmEx：多為 secondary，先向航空/主保險申請後補差額；需書面證明與收據。', jcb: 'JCB 晶緻/極緻：含旅遊不便險，門檻與額度依卡別；以權益手冊為準。' };
-  return m[S.card] + ' <span class="warn" style="display:inline-block">各卡差異大，本頁不存你的卡號。</span>';
+  return m[S.card] + ' <span class="warn">各卡差異大，本頁不存你的卡號。</span>';
 }
 function renderEvidence() {
-  $('#checklist').innerHTML = CHECKS.map(([k, t]) => `<label class="check"><input type="checkbox" data-c="${k}" ${S.checks[k] ? 'checked' : ''}> ${t}</label>`).join('');
-  $('#checklist').querySelectorAll('input').forEach((c) => c.addEventListener('change', () => { S.checks[c.dataset.c] = c.checked; save(); renderTracks(); }));
+  $('#checklist').innerHTML = CHECKS.map(([k, t]) => `<label class="check ${S.checks[k] ? 'done' : ''}"><input type="checkbox" data-c="${k}" ${S.checks[k] ? 'checked' : ''}><span>${t}</span></label>`).join('');
+  $('#checklist').querySelectorAll('input').forEach((c) => c.addEventListener('change', () => { S.checks[c.dataset.c] = c.checked; c.parentNode.classList.toggle('done', c.checked); save(); renderTracks(); }));
   $('#photos').innerHTML = S.photos.map((p) => `<img src="${p.data}" title="${p.t}">`).join('');
 }
 $('#photo').addEventListener('change', async (e) => {
@@ -258,7 +259,7 @@ function tick() {
   if (!S) return;
   const ms = new Date(S.deadline) - Date.now(); const neg = ms < 0; const a = Math.abs(ms);
   const h = Math.floor(a / 3600e3), m = Math.floor((a % 3600e3) / 60e3), s = Math.floor((a % 60e3) / 1e3);
-  $('#clock').textContent = `${neg ? '逾期 ' : '剩 '}${h}h ${pad(m)}m ${pad(s)}s`;
+  $('#clock').innerHTML = `<small>${neg ? '已逾期' : '距期限'}</small>${h}:${pad(m)}:${pad(s)}`;
 }
 setInterval(tick, 1000);
 render();
