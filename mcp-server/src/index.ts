@@ -180,7 +180,8 @@ server.registerTool(
           id: 'quote_scan', tier: 'auto',
           title: '掃今晚其他航班價格',
           why: '把看到的價格丟進 edi_price_band，滿 3 筆才有可信區間。',
-          link: `${links.gflights} | ${links.skyscanner}`,
+          link: links.gflights,
+          altLinks: [links.skyscanner, links.gflightsTmr],
           reversible: true,
         },
         {
