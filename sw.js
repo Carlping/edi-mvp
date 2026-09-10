@@ -1,4 +1,4 @@
-const C = "edi-v2";
+const C = "edi-v3";
 const FILES = ['./', './index.html', './app.css', './app.js', './manifest.json', './icon.svg'];
 self.addEventListener('install', (e) => e.waitUntil(caches.open(C).then((c) => c.addAll(FILES))));
 self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== C).map((k) => caches.delete(k))))));

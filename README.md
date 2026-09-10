@@ -14,6 +14,7 @@
 | **一張決策卡**：剩餘時間倒數、每小時等待成本、★保底（全部可逆：改期、可免費取消旅館、拿餐券）、◇改善（今晚回家的候選）。 | **One decision card**: countdown, hourly cost of waiting, ★ Floor (all reversible: rebook, free-cancel hotel, meal voucher), ◇ Upside (candidates to get home tonight). |
 | **±1σ 價格區間**：把你在官網/比價看到的價格填進來（≥3 筆），算 p16 / p50 / p84，並告訴你「區間夠窄，決定吧」或「再查一下」。 | **±1σ price band**: enter fares you see on airline/OTA sites (≥3), get p16 / p50 / p84 and a stop rule: "band is narrow, decide" vs "look once more". |
 | **七條平行工作軌**：回程、客服（三句話術）、住宿、交通、餐食、證據、保險——每條一行狀態 + 一鍵跳轉。 | **Seven parallel tracks**: return flight, call-centre (3-line script), lodging, transport, food, evidence, insurance — one status line each, one-tap deep links. |
+| **保護轉機模式**：勾「我要接下一段航班」，期限自動設為下一段起飛前緩衝（2–3h）；行動清單分「同一張票 / 分開買」兩套，含鄰近機場與開車/租車方案。 | **Connection-protection mode**: tick "I have an onward flight" and the deadline becomes departure minus buffer (2–3h); the checklist switches between same-PNR vs separate-ticket playbooks, with nearby-airport and drive/rental options. |
 | **航空提供 vs 自理**：以信用卡保險回補後的淨成本比較。 | **Airline-provided vs self-arranged**: compared on net cost after card-insurance reimbursement. |
 | **證據與理賠包**：6 項 checklist、拍照/上傳收據、自動時間線，一鍵匯出單一 HTML 理賠包。 | **Evidence & claim pack**: 6-item checklist, receipt photos, auto timeline, one-tap export to a single HTML claim pack. |
 | **付款一律跳轉官網**（航空公司、Booking、Google Flights、Skyscanner、Google Maps、Rome2Rio、Uber），本站不經手金流。 | **All payments redirect to official sites** (airline, Booking, Google Flights, Skyscanner, Google Maps, Rome2Rio, Uber); this site never touches money. |
