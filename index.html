@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<title>EDI 緊急決策卡</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">EDI</div>
+  <div id="clock" class="clock">—</div>
+  <div id="floor-state" class="pill gray">未開始</div>
+</header>
+
+<main>
+  <!-- STEP 1: intake -->
+  <section id="intake" class="card">
+    <h2>30 秒開場</h2>
+    <p class="muted">不需登入。資料只存在你的手機（localStorage），不上傳。</p>
+    <form id="intake-form">
+      <label>目前所在機場（IATA）<input name="here" placeholder="例：TPE" maxlength="3" required autocapitalize="characters"></label>
+      <label>要回去的機場/城市（IATA）<input name="home" placeholder="例：KHH" maxlength="3" required autocapitalize="characters"></label>
+      <label>被取消的航班號<input name="flight" placeholder="例：BR123"></label>
+      <label>必須在幾小時內到達<input name="hours" type="number" value="24" min="1" max="72" required></label>
+      <label>人數 <input name="pax" type="number" value="1" min="1" max="9"> <span class="muted">（含小孩）</span></label>
+      <label>有 12 歲以下小孩 <input name="kids" type="checkbox"></label>
+      <label>信用卡等級
+        <select name="card">
+          <option value="none">無 / 不確定</option>
+          <option value="visa_sig">Visa 御璽/無限</option>
+          <option value="mc_world">Mastercard 世界/鈦金</option>
+          <option value="amex">American Express</option>
+          <option value="jcb">JCB 晶緻/極緻</option>
+        </select>
+      </label>
+      <fieldset>
+        <legend>偏好（可跳過）</legend>
+        <label class="row"><input type="radio" name="pref_time" value="save" checked> 省錢</label>
+        <label class="row"><input type="radio" name="pref_time" value="fast"> 早到</label>
+      </fieldset>
+      <fieldset>
+        <label class="row"><input type="radio" name="pref_risk" value="safe" checked> 確定到</label>
+        <label class="row"><input type="radio" name="pref_risk" value="bet"> 賭直飛</label>
+      </fieldset>
+      <button type="submit" class="primary big">產生決策卡</button>
+    </form>
+  </section>
+
+  <!-- STEP 2: decision card -->
+  <section id="decision" class="hidden">
+    <div class="card" id="summary"></div>
+    <div class="card" id="tracks"></div>
+    <div class="card" id="quotes">
+      <h3>價格觀測 → ±1σ 區間</h3>
+      <p class="muted">沒有航班 API 時，把你在官網/比價看到的價格填進來（至少 3 筆），系統算 p16 / p50 / p84。</p>
+      <div id="quote-list"></div>
+      <form id="quote-form" class="inline">
+        <input name="label" placeholder="例：B航 21:40" required>
+        <input name="price" type="number" placeholder="TWD" required inputmode="numeric">
+        <input name="arrive" placeholder="到達 23:10" pattern="([01]?\d|2[0-3]):[0-5]\d" title="HH:MM" inputmode="numeric" required>
+        <button type="submit">＋</button>
+      </form>
+      <div id="estimate"></div>
+    </div>
+    <div class="card" id="compare"></div>
+    <div class="card" id="rights"></div>
+    <div class="card" id="evidence">
+      <h3>證據 / 理賠包</h3>
+      <div id="checklist"></div>
+      <label class="capture">拍照 / 上傳收據 <input id="photo" type="file" accept="image/*" capture="environment" multiple></label>
+      <div id="photos" class="thumbs"></div>
+      <button id="export" class="secondary">匯出理賠包（單一 HTML 檔）</button>
+    </div>
+    <div class="card">
+      <button id="reset" class="danger">清除所有資料</button>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+<script src="app.js"></script>
+</body>
+</html>
