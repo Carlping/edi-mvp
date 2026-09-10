@@ -26,6 +26,20 @@ export const TW = new Set(['TPE', 'TSA', 'KHH', 'RMQ', 'TNN', 'HUN', 'TTT', 'KNH
 export const EU = new Set(['CDG', 'ORY', 'AMS', 'FRA', 'MUC', 'DUS', 'HAM', 'BER', 'FCO', 'MXP', 'LIN', 'MAD', 'BCN', 'VIE', 'ZRH', 'GVA', 'CPH', 'ARN', 'OSL', 'HEL', 'BRU', 'DUB', 'LIS', 'WAW', 'PRG', 'BUD', 'ATH', 'NCE', 'LYS', 'LHR', 'LGW', 'STN', 'LTN', 'MAN', 'EDI']);
 export const US = new Set(['JFK', 'EWR', 'LGA', 'LAX', 'SFO', 'SJC', 'ORD', 'ATL', 'DFW', 'SEA', 'BOS', 'IAD', 'DCA', 'MIA', 'DEN', 'LAS', 'PHX', 'IAH', 'MCO', 'SAN', 'HNL', 'MSP', 'DTW', 'PHL', 'CLT', 'SLT', 'BWI', 'PDX']);
 
+/* metro areas: same-city alternates for connection protection */
+export const METRO = [['JFK', 'LGA', 'EWR'], ['LHR', 'LGW', 'STN', 'LTN'], ['NRT', 'HND'], ['ORD', 'MDW'], ['SFO', 'OAK', 'SJC'], ['LAX', 'BUR', 'SNA', 'LGB', 'ONT'], ['DCA', 'IAD', 'BWI'], ['TPE', 'TSA'], ['PVG', 'SHA'], ['ICN', 'GMP'], ['CDG', 'ORY'], ['MXP', 'LIN'], ['DFW', 'DAL'], ['IAH', 'HOU'], ['MIA', 'FLL'], ['KIX', 'ITM'], ['BKK', 'DMK'], ['CGK', 'HLP']];
+export function altAirports(code: string): string[] {
+  const g = METRO.find((g) => g.includes(code));
+  return g ? g.filter((x) => x !== code) : [];
+}
+
+export interface ConnectionInput {
+  flight?: string;
+  departAt: string; // ISO 8601
+  samePnr: boolean;
+  bufferHours: 2 | 3;
+}
+
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
@@ -77,6 +91,9 @@ export function deepLinks({ here, home, pax, flight, now = new Date() }: LinkCtx
     rome2rio: `https://www.rome2rio.com/map/${here}/${home}`,
     uber: `https://m.uber.com/ul/?action=setPickup&pickup=my_location`,
     food: `https://www.google.com/maps/search/${encodeURIComponent(here + ' airport restaurant')}`,
+    gflightsAlt: altAirports(home).map((c) => ({ code: c, url: `https://www.google.com/travel/flights?q=${encodeURIComponent(`Flights from ${here} to ${c} on ${ymd(d)}`)}` })),
+    drive: `https://www.google.com/maps/dir/?api=1&origin=${here}+airport&destination=${home}+airport&travelmode=driving`,
+    rental: `https://www.google.com/search?q=${encodeURIComponent('one way car rental ' + here + ' airport')}`,
   };
 }
 

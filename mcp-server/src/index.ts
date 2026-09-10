@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import {
-  airlineFor, band, cardNote, costSlopeTwdPerHour, deepLinks,
+  airlineFor, altAirports, band, cardNote, costSlopeTwdPerHour, deepLinks,
   EVIDENCE_CHECKS, rightsHint, type CardTier,
 } from './core.js';
 
@@ -29,6 +29,14 @@ const server = new McpServer({ name: 'edi', version: '0.1.0' });
 const iata = () => z.string().length(3).transform((s) => s.toUpperCase());
 const prefTime = () => z.enum(['fast', 'cheap']).default('cheap');
 const card = () => z.enum(CARD_TIERS).default('none');
+const connection = z.object({
+  flight: z.string().optional(),
+  departAt: z.string().describe('下一段起飛時間 ISO 8601'),
+  samePnr: z.boolean().default(true),
+  bufferHours: z.union([z.literal(2), z.literal(3)]).default(3),
+}).optional().describe('保護轉機：若填，期限 = 下一段起飛 − 緩衝');
+
+const CONN_VERDICT = '期限內能到就直接買，不要等更便宜的——下一段票的價值遠大於這段的價差。';
 
 /* ---------- tool 1: edi_open_case ---------- */
 server.registerTool(
@@ -44,18 +52,24 @@ server.registerTool(
       kids: z.boolean().default(false),
       card: card().describe('信用卡別（旅遊不便險提示用）'),
       prefTime: prefTime().describe('偏好：cheap 省錢 / fast 早到'),
+      connection,
     },
   },
-  async ({ here, home, flight, deadlineHours, pax, kids, card: c, prefTime: pref }) => {
+  async ({ here, home, flight, deadlineHours, pax, kids, card: c, prefTime: pref, connection: conn }) => {
     const now = new Date();
     const f = flight ? flight.toUpperCase().replace(/\s/g, '') : undefined;
+    const deadline = conn
+      ? new Date(new Date(conn.departAt).getTime() - conn.bufferHours * 3600e3).toISOString()
+      : new Date(now.getTime() + deadlineHours * 3600e3).toISOString();
     return result({
       caseId: randomUUID(),
+      mode: conn ? 'connection' : 'return',
       here, home, flight: f,
       airline: airlineFor(f),
       pax, kids, card: c, prefTime: pref,
+      connection: conn ? { ...conn, deadline, altAirports: altAirports(home) } : undefined,
       startedAt: now.toISOString(),
-      deadline: new Date(now.getTime() + deadlineHours * 3600e3).toISOString(),
+      deadline,
       costSlopeTwdPerHour: costSlopeTwdPerHour(kids, now),
       links: deepLinks({ here, home, pax, flight: f, now }),
       rights: rightsHint(here),
@@ -79,9 +93,10 @@ server.registerTool(
       deadline: z.string().describe('必須到達的期限 ISO 8601'),
       prefTime: prefTime(),
       kids: z.boolean().default(false),
+      connection: z.boolean().default(false).describe('保護轉機模式：期限內能到就直接買'),
     },
   },
-  async ({ quotes, deadline, prefTime: pref, kids }) => {
+  async ({ quotes, deadline, prefTime: pref, kids, connection: connMode }) => {
     const now = new Date();
     const dl = new Date(deadline);
     const b = band(quotes.map((q) => q.price));
@@ -97,7 +112,10 @@ server.registerTool(
     const slope = costSlopeTwdPerHour(kids, now);
     const parts: string[] = [];
     let decision: 'decide_now' | 'observe_more' | 'no_eligible';
-    if (!pick) {
+    if (connMode && pick) {
+      decision = 'decide_now';
+      parts.push(CONN_VERDICT);
+    } else if (!pick) {
       decision = 'no_eligible';
       parts.push('尚無期限內可到達的觀測價格。先開比價看今天剩什麼。');
     } else if (!reliable) {
@@ -109,12 +127,12 @@ server.registerTool(
         ? '價格在中位數以下，等待的期望改善小於每小時成本 → 建議現在決定。'
         : '價格高於中位數；若 15 分鐘內沒有更便宜的，仍建議決定（時間成本累積中）。');
     }
-    if (reliable) {
+    if (reliable && !(connMode && pick)) {
       const spread = (b.p84 - b.p16) / b.p50;
       parts.push(spread < 0.5
         ? `區間夠窄（±${Math.round(spread * 50)}%，n=${b.n}），不需再查，決定吧。`
         : `區間仍寬（n=${b.n}），再多 1–2 筆觀測會有幫助；但每小時成本約 NT$ ${Math.round(slope).toLocaleString('zh-Hant')}。`);
-    } else {
+    } else if (!reliable) {
       parts.push(`已 ${b.n}/3 筆，滿 3 筆才有可信區間。`);
     }
 
@@ -147,15 +165,80 @@ server.registerTool(
       pax: z.number().int().min(1).max(9).default(1),
       kids: z.boolean().default(false),
       card: card(),
+      connection,
     },
   },
-  async ({ here, home, flight, pax, kids, card: c }) => {
+  async ({ here, home, flight, pax, kids, card: c, connection: conn }) => {
     const now = new Date();
     const f = flight ? flight.toUpperCase().replace(/\s/g, '') : undefined;
     const links = deepLinks({ here, home, pax, flight: f, now });
     const a = airlineFor(f);
-    return result({
-      actions: [
+    const alts = altAirports(home);
+    const altUrls = links.gflightsAlt.map((x) => x.url);
+    const actions = conn
+      ? (conn.samePnr
+        ? [
+          {
+            id: 'call_airline', tier: 'auto',
+            title: '打原航空客服保住下一段',
+            why: `開場一句：「我要保住 ${conn.flight || '下一段'} 這段，請把 ${f || '原航班'} 改到任何能趕上的班，含他航與 ${alts.join('/') || '鄰近機場'}」`,
+            link: a ? a.url : links.airline,
+            reversible: true,
+          },
+          {
+            id: 'rebook_any', tier: 'prepare',
+            title: '改到期限前能到的航班',
+            why: 'App 改期若不給他航，走客服。',
+            link: a ? a.url : links.airline,
+            altLinks: altUrls,
+            reversible: true,
+          },
+          {
+            id: 'hold_tomorrow_onward', tier: 'prepare',
+            title: '保底：把下一段改到明天同艙等先 hold',
+            why: '請航空同時把下一段改到明天同艙等先 hold。',
+            reversible: true,
+          },
+          {
+            id: 'buy_improvement', tier: 'gated',
+            title: '去官網付款 — 需本人確認',
+            why: '付款不可逆且跳轉官網；期限內能到就直接買。',
+            link: links.gflights,
+            reversible: false,
+          },
+        ]
+        : [
+          {
+            id: 'hold_tomorrow_onward', tier: 'prepare',
+            title: '保底：把下一段改到明天先 hold',
+            why: `先打下一段航空，把 ${conn.flight || '下一段'} 改到明天 hold（頭等/商務多可低費改期）。`,
+            reversible: true,
+          },
+          {
+            id: 'buy_any_carrier', tier: 'gated',
+            title: '買今天任何航空期限前能到的票',
+            why: `買今天任何航空到 ${home}/${alts.join('/') || '鄰近機場'} 的票，期限前到就買。`,
+            link: links.gflights,
+            altLinks: altUrls,
+            reversible: false,
+          },
+          {
+            id: 'drive', tier: 'prepare',
+            title: '查開車/租車',
+            why: '開車若能在期限前到是最確定的方案。',
+            link: links.drive,
+            altLinks: [links.rental],
+            reversible: true,
+          },
+          {
+            id: 'refund_original', tier: 'auto',
+            title: '向原航空要求退款',
+            why: '向原航空要求退款 + 書面取消證明。',
+            link: a ? a.url : links.airline,
+            reversible: true,
+          },
+        ])
+      : [
         {
           id: 'rebook_free', tier: 'prepare',
           title: '在原航空 App/官網免費改期到明日最早班',
@@ -191,7 +274,23 @@ server.registerTool(
           link: links.gflights,
           reversible: false,
         },
-      ],
+      ];
+    return result({
+      mode: conn ? 'connection' : 'return',
+      actions,
+      ...(conn ? {
+        phoneScript: conn.samePnr
+          ? [
+            `① 我要保住下一段 ${conn.flight || ''}`.trim(),
+            `② 把 ${f || '原航班'} 改到任何能趕上的班，含他航/鄰近機場`,
+            '③ 不行就改替代路線或明天同艙等，並要求書面證明',
+          ]
+          : [
+            `① 先打下一段航空，把 ${conn.flight || '下一段'} 改到明天 hold`,
+            '② 再打原航空要求退款 + 書面取消證明',
+          ],
+        verdictRule: CONN_VERDICT,
+      } : {}),
       rights: rightsHint(here),
       evidence: EVIDENCE_CHECKS.map(([id, text]) => ({ id, text })),
       cardNote: cardNote(c as CardTier),
