@@ -76,6 +76,30 @@ try {
     here: 'TPE', home: 'KHH', flight: 'BR123', pax: 2, kids: true, card: 'visa_sig',
   });
 
+  // ---- connection-protection case: PIT->JFK, DL123, must catch JL 00:05 tomorrow
+  const dep = new Date(now); dep.setDate(dep.getDate() + 1); dep.setHours(0, 5, 0, 0);
+  const conn = { flight: 'JL 00:05 JFK→HND', departAt: dep.toISOString(), samePnr: false, bufferHours: 3 };
+  const expDeadline = new Date(dep.getTime() - 3 * 3600e3).toISOString();
+  const connCase = await call('edi_open_case', {
+    here: 'pit', home: 'jfk', flight: 'DL123', pax: 2, kids: true, card: 'visa_sig', connection: conn,
+  });
+  if (connCase.mode !== 'connection') fail('conn open_case mode');
+  if (connCase.deadline !== expDeadline) fail(`conn deadline ${connCase.deadline} != ${expDeadline}`);
+  if (JSON.stringify(connCase.connection.altAirports) !== JSON.stringify(['LGA', 'EWR']))
+    fail('conn altAirports: ' + JSON.stringify(connCase.connection.altAirports));
+  const connPlan = await call('edi_floor_plan', {
+    here: 'PIT', home: 'JFK', flight: 'DL123', pax: 2, kids: true, card: 'visa_sig', connection: conn,
+  });
+  if (connPlan.actions[0].id !== 'hold_tomorrow_onward') fail('conn plan first action: ' + connPlan.actions[0].id);
+  if (!connPlan.actions.some((a) => a.id === 'drive')) fail('conn plan missing drive');
+  if (!Array.isArray(connPlan.phoneScript)) fail('conn plan missing phoneScript');
+  const connBand = await call('edi_price_band', {
+    quotes: [{ label: 'DL now', price: 320, arriveAt: new Date(dep.getTime() - 3 * 3600e3 - 600e3).toISOString() }],
+    deadline: expDeadline, connection: true,
+  });
+  if (connBand.decision !== 'decide_now') fail('conn band decision: ' + connBand.decision);
+  if (!connBand.verdict.includes('直接買')) fail('conn band verdict');
+
   const b = tools.edi_price_band.band;
   const exp = { p16: 5044, p50: 6200, p84: 7696, n: 3 };
   for (const k of Object.keys(exp)) {
