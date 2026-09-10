@@ -46,6 +46,11 @@ input[name=here],input[name=home]{font-family:var(--display);font-weight:700;fon
 .grid2 label{margin-top:12px}
 input[type=checkbox],input[type=radio]{width:22px;height:22px;margin:0 10px 0 0;accent-color:var(--signal);vertical-align:middle}
 label.row{display:flex;align-items:center;font-weight:500;padding:10px 0;margin:0}
+input:disabled{opacity:.45}
+.conn{border:0;padding:0;margin:14px 0 0}
+#conn-fields{margin-top:10px}
+.conn .hint{font-size:13px;font-weight:400;color:var(--muted);margin:8px 0 0}
+.conn-seg{align-self:end;margin-top:12px}
 fieldset{border:0;padding:0;margin:14px 0 0}
 legend{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:0;margin-bottom:8px}
 .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid #B9B3A5;border-radius:var(--r);overflow:hidden}

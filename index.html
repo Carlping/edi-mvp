@@ -39,6 +39,20 @@
         <label>人數 <span class="hint">含小孩</span><input name="pax" type="number" value="1" min="1" max="9" inputmode="numeric"></label>
         <label class="row" style="align-self:end;padding-bottom:14px"><input name="kids" type="checkbox"> 有 12 歲以下小孩</label>
       </div>
+      <fieldset class="conn">
+        <label class="row"><input type="checkbox" name="conn" id="conn-toggle"> 我要接下一段航班（保護轉機）</label>
+        <div id="conn-fields" class="hidden">
+          <div class="grid2">
+            <label>下一段航班<input name="conn_flight" placeholder="JL 00:05 JFK→HND" autocomplete="off"></label>
+            <label>下一段起飛時間<input name="conn_dep" placeholder="00:05" pattern="([01]?\d|2[0-3]):[0-5]\d" title="HH:MM" inputmode="numeric"></label>
+          </div>
+          <div class="grid2">
+            <label>提前到達緩衝<select name="conn_buffer"><option value="3" selected>3 小時（國際）</option><option value="2">2 小時（國內）</option></select></label>
+            <div class="seg conn-seg"><label><input type="radio" name="conn_same" value="same" checked>同一張票</label><label><input type="radio" name="conn_same" value="separate">分開買</label></div>
+          </div>
+          <p class="hint">「要回到」請填下一段的起飛機場（例 JFK）；期限會自動設為起飛前緩衝時間。</p>
+        </div>
+      </fieldset>
       <label>信用卡等級 <span class="hint">只用來提示保險，不存卡號</span>
         <select name="card">
           <option value="none">無 / 不確定</option>
